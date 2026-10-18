@@ -4,9 +4,18 @@ import java.util.List;
 
 public record Base(int cx, int cy, int cz,
                    int minX, int minY, int minZ, int maxX, int maxY, int maxZ,
-                   int score, int total, int[] counts, List<Entry> entries) {
+                   int score, int total, int confirmed, int[] counts, List<Entry> entries) {
 
-    public record Entry(int x, int y, int z, StorageType type) {}
+    /**
+     * seen     — у скількох сканах підряд клієнт бачив цей блок у завантаженому чанку;
+     * verified — блок бачили в цій сесії (false = запис лише зі старого файлу збереження).
+     */
+    public record Entry(int x, int y, int z, StorageType type, int seen, boolean verified) {
+        /** Підтверджений = перевірений клієнтом і стабільний кілька сканів підряд. */
+        public boolean confirmed() {
+            return verified && seen >= Math.max(1, BaseFinderConfig.confirmScans);
+        }
+    }
 
     public double distSq(double px, double py, double pz) {
         double dx = cx + 0.5 - px;

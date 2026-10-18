@@ -5,6 +5,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.BufferBuilder;
@@ -12,6 +13,7 @@ import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.BuiltBuffer;
 import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
@@ -30,6 +32,7 @@ public final class BaseRenderer {
     private static final float[] RED = {1f, 0.25f, 0.25f};
     private static final float[] ORANGE = {1f, 0.6f, 0.1f};
     private static final float[] YELLOW = {1f, 0.9f, 0.2f};
+    private static final float[] GRAY = {0.6f, 0.65f, 0.8f};
     private static final float[] CYAN = {0.2f, 0.9f, 1f};
 
     public static void init() {
@@ -59,14 +62,16 @@ public final class BaseRenderer {
 
         if (esp) {
             for (Base b : BaseScanner.bases()) {
-                float[] c = color(b.score());
+                float[] c = b.confirmed() > 0 ? color(b.score()) : GRAY;
                 // тонкий стовп, щоб базу було видно здалеку
                 box(bb, mat, cam, b.cx() + 0.35, b.cy() - 128, b.cz() + 0.35,
                         b.cx() + 0.65, b.cy() + 384, b.cz() + 0.65, c[0], c[1], c[2], 0.30f);
                 // кожен контейнер окремо
                 for (Base.Entry e : b.entries()) {
+                    // непідтверджені блоки (режим "лише підтверджені" вимкнено) — сірі й блідіші
+                    float[] ec = e.confirmed() ? c : GRAY;
                     box(bb, mat, cam, e.x() + 0.05, e.y() + 0.05, e.z() + 0.05,
-                            e.x() + 0.95, e.y() + 0.95, e.z() + 0.95, c[0], c[1], c[2], 0.40f);
+                            e.x() + 0.95, e.y() + 0.95, e.z() + 0.95, ec[0], ec[1], ec[2], e.confirmed() ? 0.40f : 0.22f);
                 }
             }
         }
@@ -89,6 +94,43 @@ public final class BaseRenderer {
         RenderSystem.enableCull();
         RenderSystem.enableDepthTest();
         RenderSystem.disableBlend();
+
+        if (esp && BaseFinderConfig.labelsEnabled) {
+            drawLabels(ctx, ms, cam);
+        }
+    }
+
+    /** Підписи над базами: кількість контейнерів і відстань (крізь стіни). */
+    private static void drawLabels(WorldRenderContext ctx, MatrixStack ms, Vec3d cam) {
+        VertexConsumerProvider consumers = ctx.consumers();
+        if (consumers == null) return;
+        TextRenderer tr = MinecraftClient.getInstance().textRenderer;
+
+        List<Base> list = new ArrayList<>(BaseScanner.bases());
+        list.sort(Comparator.comparingDouble(b -> b.distSq(cam.x, cam.y, cam.z)));
+        int n = Math.min(list.size(), 20);
+
+        for (int i = 0; i < n; i++) {
+            Base b = list.get(i);
+            double dist = Math.sqrt(b.distSq(cam.x, cam.y, cam.z));
+            String s = b.total() + " конт. · " + (int) dist + " м"
+                    + (b.confirmed() < b.total() ? " · підтв. " + b.confirmed() + "/" + b.total() : "");
+            float scale = 0.025f * (float) Math.max(1.0, dist / 8.0);
+
+            ms.push();
+            ms.translate(b.cx() + 0.5 - cam.x, b.cy() + 2.0 - cam.y, b.cz() + 0.5 - cam.z);
+            ms.multiply(ctx.camera().getRotation());
+            ms.scale(-scale, -scale, scale);
+            Matrix4f m = ms.peek().getPositionMatrix();
+            float w = tr.getWidth(s);
+            tr.draw(Text.literal(s), -w / 2f, 0f, 0xFFFFFFFF, false, m, consumers,
+                    TextRenderer.TextLayerType.SEE_THROUGH, 0x66000000, 0xF000F0);
+            ms.pop();
+        }
+
+        if (consumers instanceof VertexConsumerProvider.Immediate imm) {
+            imm.draw();
+        }
     }
 
     private static void box(BufferBuilder bb, Matrix4f m, Vec3d cam,

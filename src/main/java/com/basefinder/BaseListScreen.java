@@ -12,6 +12,7 @@ import java.util.List;
 
 public class BaseListScreen extends Screen {
     private static final int ROW_H = 22;
+    private static final int DEL_W = 22;
 
     private List<Base> view = new ArrayList<>();
     private int scroll = 0;
@@ -26,7 +27,7 @@ public class BaseListScreen extends Screen {
         int panelW = Math.min(width - 20, 460);
         listLeft = (width - panelW) / 2;
         listRight = listLeft + panelW;
-        listTop = 100;
+        listTop = 132;
         listBottom = height - 22;
     }
 
@@ -43,6 +44,16 @@ public class BaseListScreen extends Screen {
         init();
     }
 
+    private void settingsChanged() {
+        BaseFinderConfig.save();
+        BaseScanner.recompute();
+        refresh();
+    }
+
+    private void addBtn(String label, int x, int y, int w, ButtonWidget.PressAction action) {
+        addDrawableChild(ButtonWidget.builder(Text.literal(label), action).dimensions(x, y, w, 20).build());
+    }
+
     @Override
     protected void init() {
         layout();
@@ -50,37 +61,58 @@ public class BaseListScreen extends Screen {
 
         int bw = 100, gap = 4;
         int x0 = width / 2 - (bw * 3 + gap * 2) / 2;
-        int y1 = 34, y2 = 58;
+        int x1 = x0 + bw + gap;
+        int x2 = x0 + (bw + gap) * 2;
+        int y1 = 34, y2 = 58, y3 = 82;
 
-        addDrawableChild(ButtonWidget.builder(
-                Text.literal("ESP: " + (BaseFinderConfig.espEnabled ? "ON" : "OFF")), b -> {
-                    BaseFinderConfig.espEnabled = !BaseFinderConfig.espEnabled;
-                    rebuild();
-                }).dimensions(x0, y1, bw, 20).build());
-
-        addDrawableChild(ButtonWidget.builder(Text.literal("Поріг −"), b -> {
-            BaseFinderConfig.minScore = Math.max(1, BaseFinderConfig.minScore - 1);
-            BaseScanner.recompute();
-            refresh();
-        }).dimensions(x0 + bw + gap, y1, bw, 20).build());
-
-        addDrawableChild(ButtonWidget.builder(Text.literal("Поріг +"), b -> {
-            BaseFinderConfig.minScore = Math.min(60, BaseFinderConfig.minScore + 1);
-            BaseScanner.recompute();
-            refresh();
-        }).dimensions(x0 + (bw + gap) * 2, y1, bw, 20).build());
-
-        addDrawableChild(ButtonWidget.builder(Text.literal("Скинути мітку"), b -> {
+        // ряд 1
+        addBtn("ESP: " + (BaseFinderConfig.espEnabled ? "ON" : "OFF"), x0, y1, bw, b -> {
+            BaseFinderConfig.espEnabled = !BaseFinderConfig.espEnabled;
+            BaseFinderConfig.save();
+            rebuild();
+        });
+        addBtn("Підписи: " + (BaseFinderConfig.labelsEnabled ? "ON" : "OFF"), x1, y1, bw, b -> {
+            BaseFinderConfig.labelsEnabled = !BaseFinderConfig.labelsEnabled;
+            BaseFinderConfig.save();
+            rebuild();
+        });
+        addBtn("Скинути мітку", x2, y1, bw, b -> {
             BaseFinderClient.target = null;
-        }).dimensions(x0, y2, bw, 20).build());
+        });
 
-        addDrawableChild(ButtonWidget.builder(Text.literal("Очистити пам'ять"), b -> {
+        // ряд 2
+        addBtn("Поріг −", x0, y2, bw, b -> {
+            BaseFinderConfig.minScore = Math.max(1, BaseFinderConfig.minScore - 1);
+            settingsChanged();
+        });
+        addBtn("Поріг +", x1, y2, bw, b -> {
+            BaseFinderConfig.minScore = Math.min(60, BaseFinderConfig.minScore + 1);
+            settingsChanged();
+        });
+        addBtn("Очистити все", x2, y2, bw, b -> {
             BaseScanner.clearAll();
             refresh();
-        }).dimensions(x0 + bw + gap, y2, bw, 20).build());
+        });
 
-        addDrawableChild(ButtonWidget.builder(Text.literal("Закрити"), b -> close())
-                .dimensions(x0 + (bw + gap) * 2, y2, bw, 20).build());
+        // ряд 3
+        addBtn("Радіус −", x0, y3, bw, b -> {
+            BaseFinderConfig.linkRadius = Math.max(8, BaseFinderConfig.linkRadius - 4);
+            settingsChanged();
+        });
+        addBtn("Радіус +", x1, y3, bw, b -> {
+            BaseFinderConfig.linkRadius = Math.min(64, BaseFinderConfig.linkRadius + 4);
+            settingsChanged();
+        });
+        addBtn("Закрити", x2, y3, bw, b -> close());
+
+        // ряд 4: режим достовірності
+        addBtn("Лише підтверджені: " + (BaseFinderConfig.requireConfirmed ? "ON" : "OFF"),
+                x0, 106, bw * 3 + gap * 2, b -> {
+                    BaseFinderConfig.requireConfirmed = !BaseFinderConfig.requireConfirmed;
+                    BaseFinderConfig.save();
+                    BaseScanner.recompute();
+                    rebuild();
+                });
     }
 
     @Override
@@ -100,8 +132,9 @@ public class BaseListScreen extends Screen {
 
         ctx.drawCenteredTextWithShadow(textRenderer, Text.literal("BaseHawk"), width / 2, 8, 0xFFFFFFFF);
         ctx.drawCenteredTextWithShadow(textRenderer,
-                Text.literal("Поріг бази: " + BaseFinderConfig.minScore + " очок  ·  зв'язок: "
-                        + BaseFinderConfig.linkRadius + " бл.  ·  знайдено: " + view.size()),
+                Text.literal("Поріг: " + BaseFinderConfig.minScore + " очок  ·  радіус: "
+                        + BaseFinderConfig.linkRadius + " бл.  ·  знайдено: " + view.size()
+                        + "  ·  відхилено: " + BaseScanner.rejectedCount()),
                 width / 2, 20, 0xFFAAAAAA);
 
         ctx.fill(listLeft, listTop, listRight, listBottom, 0x66000000);
@@ -125,20 +158,27 @@ public class BaseListScreen extends Screen {
             Base b = view.get(scroll + i);
             int y = listTop + i * ROW_H;
             boolean hover = mouseX >= listLeft && mouseX < listRight && mouseY >= y && mouseY < y + ROW_H;
+            boolean delHover = hover && mouseX >= listRight - DEL_W;
             boolean isTarget = target != null && target.getX() == b.cx() && target.getY() == b.cy() && target.getZ() == b.cz();
 
             ctx.fill(listLeft + 1, y + 1, listRight - 1, y + ROW_H - 1, hover ? 0x55FFFFFF : 0x22FFFFFF);
 
+            // кнопка видалення бази
+            ctx.fill(listRight - DEL_W + 2, y + 3, listRight - 4, y + ROW_H - 3, delHover ? 0xCCFF4444 : 0x88AA2222);
+            ctx.drawCenteredTextWithShadow(textRenderer, Text.literal("×"),
+                    listRight - DEL_W / 2 - 1, y + 7, 0xFFFFFFFF);
+
             int dist = (int) Math.sqrt(b.distSq(px, py, pz));
             String l1 = "#" + (scroll + i + 1) + "  " + b.cx() + " " + b.cy() + " " + b.cz()
-                    + "  (" + dist + " м)  очки " + b.score();
-            String l2 = textRenderer.trimToWidth(b.summary(), listRight - listLeft - 12);
+                    + "  (" + dist + " м)  очки " + b.score()
+                    + (b.confirmed() < b.total() ? "  підтв. " + b.confirmed() + "/" + b.total() : "");
+            String l2 = textRenderer.trimToWidth(b.summary(), listRight - listLeft - 12 - DEL_W);
             ctx.drawTextWithShadow(textRenderer, l1, listLeft + 6, y + 3, isTarget ? 0xFF55FFFF : 0xFFFFFFFF);
             ctx.drawTextWithShadow(textRenderer, l2, listLeft + 6, y + 12, 0xFFAAAAAA);
         }
 
         ctx.drawCenteredTextWithShadow(textRenderer,
-                Text.literal("ЛКМ — поставити мітку  ·  ПКМ — копіювати координати  ·  колесо — прокрутка"),
+                Text.literal("ЛКМ — мітка  ·  ПКМ — копіювати  ·  × — видалити базу  ·  колесо — прокрутка"),
                 width / 2, height - 14, 0xFF888888);
     }
 
@@ -157,7 +197,10 @@ public class BaseListScreen extends Screen {
             int idx = scroll + row;
             if (idx >= 0 && idx < view.size()) {
                 Base b = view.get(idx);
-                if (button == 0) {
+                if (button == 0 && mouseX >= listRight - DEL_W) {
+                    BaseScanner.deleteBase(b);
+                    refresh();
+                } else if (button == 0) {
                     BaseFinderClient.target = new BlockPos(b.cx(), b.cy(), b.cz());
                 } else if (button == 1 && client != null) {
                     client.keyboard.setClipboard(b.cx() + " " + b.cy() + " " + b.cz());
@@ -176,4 +219,4 @@ public class BaseListScreen extends Screen {
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
-      }
+}

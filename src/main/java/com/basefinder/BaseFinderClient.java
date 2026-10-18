@@ -23,6 +23,8 @@ public class BaseFinderClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        BaseFinderConfig.load();
+
         openKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.basefinder.open", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_B, "category.basefinder"));
         espKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
@@ -38,6 +40,7 @@ public class BaseFinderClient implements ClientModInitializer {
             }
             while (espKey.wasPressed()) {
                 BaseFinderConfig.espEnabled = !BaseFinderConfig.espEnabled;
+                BaseFinderConfig.save();
                 if (mc.player != null) {
                     mc.player.sendMessage(Text.literal("BaseHawk ESP: " + (BaseFinderConfig.espEnabled ? "§aON" : "§cOFF")), true);
                 }
