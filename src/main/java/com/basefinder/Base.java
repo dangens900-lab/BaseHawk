@@ -13,7 +13,7 @@ public record Base(int cx, int cy, int cz,
     public record Entry(int x, int y, int z, StorageType type, int seen, boolean verified) {
         /** Підтверджений = перевірений клієнтом і стабільний кілька сканів підряд. */
         public boolean confirmed() {
-            return verified && seen >= Math.max(1, BaseFinderConfig.confirmScans);
+            return verified && seen >= BaseFinderConfig.effectiveConfirmScans();
         }
     }
 

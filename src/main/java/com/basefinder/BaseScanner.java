@@ -79,7 +79,7 @@ public final class BaseScanner {
         }
 
         tickCounter++;
-        if (tickCounter % Math.max(1, BaseFinderConfig.scanIntervalTicks) == 0) {
+        if (tickCounter % BaseFinderConfig.effectiveScanTicks() == 0) {
             scanLoaded(mc, world, player);
             dirty = true;
         }
@@ -111,6 +111,7 @@ public final class BaseScanner {
                     for (Base.Entry e : old) prev.put(BlockPos.asLong(e.x(), e.y(), e.z()), e);
                 }
 
+                if (old == null && ch.getBlockEntities().isEmpty()) continue;
                 Map<Long, Base.Entry> now = new HashMap<>();
                 for (BlockEntity be : new ArrayList<>(ch.getBlockEntities().values())) {
                     StorageType t = StorageType.of(be);
@@ -118,7 +119,7 @@ public final class BaseScanner {
                     BlockPos p = be.getPos();
                     long pl = p.asLong();
                     if (ignored.contains(pl)) continue;
-                    if (!isRealBlock(ch, be, p, t)) {
+                    if (!BaseFinderConfig.catchAll && !isRealBlock(ch, be, p, t)) {
                         rejected.add(pl);
                         continue;
                     }

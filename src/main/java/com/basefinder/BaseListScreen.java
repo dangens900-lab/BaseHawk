@@ -107,8 +107,15 @@ public class BaseListScreen extends Screen {
 
         // ряд 4: режим достовірності
         addBtn("Лише підтверджені: " + (BaseFinderConfig.requireConfirmed ? "ON" : "OFF"),
-                x0, 106, bw * 3 + gap * 2, b -> {
+                x0, 106, (bw * 3 + gap) / 2, b -> {
                     BaseFinderConfig.requireConfirmed = !BaseFinderConfig.requireConfirmed;
+                    BaseFinderConfig.save();
+                    BaseScanner.recompute();
+                    rebuild();
+                });
+        addBtn("Ловити все: " + (BaseFinderConfig.catchAll ? "ON" : "OFF"),
+                x0 + (bw * 3 + gap) / 2 + gap, 106, (bw * 3 + gap) / 2, b -> {
+                    BaseFinderConfig.catchAll = !BaseFinderConfig.catchAll;
                     BaseFinderConfig.save();
                     BaseScanner.recompute();
                     rebuild();

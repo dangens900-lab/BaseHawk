@@ -17,6 +17,8 @@ public final class BaseFinderConfig {
     public static boolean chatNotify = true;
     /** Рахувати в базах лише підтверджені блоки (бачені в цій сесії й стабільні). */
     public static boolean requireConfirmed = true;
+    /** Режим "ловити все": скан щотіку, підтвердження з першого разу, без перевірки стану блока. */
+    public static boolean catchAll = false;
     /** Скільки сканів підряд блок має бути на місці, щоб вважатись підтвердженим. */
     public static int confirmScans = 3;
     /** Запам'ятований блок видаляється, лише якщо ти ближче за стільки блоків, а його там нема. */
@@ -28,6 +30,14 @@ public final class BaseFinderConfig {
     /** Як часто сканувати завантажені чанки (тіки). */
     public static int scanIntervalTicks = 4;
 
+    public static int effectiveScanTicks() {
+        return catchAll ? 1 : Math.max(1, scanIntervalTicks);
+    }
+
+    public static int effectiveConfirmScans() {
+        return catchAll ? 1 : Math.max(1, confirmScans);
+    }
+
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     private static final class Data {
@@ -35,6 +45,7 @@ public final class BaseFinderConfig {
         boolean labelsEnabled = true;
         boolean chatNotify = true;
         boolean requireConfirmed = true;
+        boolean catchAll = false;
         int minScore = 6;
         int linkRadius = 24;
     }
@@ -54,6 +65,7 @@ public final class BaseFinderConfig {
                 labelsEnabled = d.labelsEnabled;
                 chatNotify = d.chatNotify;
                 requireConfirmed = d.requireConfirmed;
+                catchAll = d.catchAll;
                 minScore = Math.max(1, Math.min(60, d.minScore));
                 linkRadius = Math.max(8, Math.min(64, d.linkRadius));
             }
@@ -71,6 +83,7 @@ public final class BaseFinderConfig {
             d.labelsEnabled = labelsEnabled;
             d.chatNotify = chatNotify;
             d.requireConfirmed = requireConfirmed;
+            d.catchAll = catchAll;
             d.minScore = minScore;
             d.linkRadius = linkRadius;
             try (Writer w = Files.newBufferedWriter(f)) {
