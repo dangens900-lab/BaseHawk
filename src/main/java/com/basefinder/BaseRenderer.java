@@ -25,6 +25,7 @@ import org.joml.Matrix4f;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 
 public final class BaseRenderer {
     private BaseRenderer() {}
@@ -158,9 +159,44 @@ public final class BaseRenderer {
 
     // ---------- HUD ----------
 
+    /** Міні-карта прочесаних ділянок: зелене — вже перевірено, жовте — бази, біле — ти. Північ угорі. */
+    private static void drawMap(DrawContext ctx, MinecraftClient mc) {
+        int half = 20;   // клітинок (по 16 блоків) від центру
+        int cell = 3;    // пікселів на клітинку
+        int size = (half * 2 + 1) * cell;
+        int x0 = mc.getWindow().getScaledWidth() - size - 6;
+        int y0 = 6;
+        ctx.fill(x0 - 1, y0 - 1, x0 + size + 1, y0 + size + 1, 0xAA000000);
+
+        int pcx = Math.floorDiv((int) Math.floor(mc.player.getX()), 16);
+        int pcz = Math.floorDiv((int) Math.floor(mc.player.getZ()), 16);
+        Set<Long> cov = BaseScanner.covered();
+        for (int dz = -half; dz <= half; dz++) {
+            for (int dx = -half; dx <= half; dx++) {
+                if (cov.contains(BaseScanner.cellKey(pcx + dx, pcz + dz))) {
+                    int px = x0 + (dx + half) * cell;
+                    int py = y0 + (dz + half) * cell;
+                    ctx.fill(px, py, px + cell, py + cell, 0x8855AA55);
+                }
+            }
+        }
+        for (Base b : BaseScanner.bases()) {
+            int dx = Math.floorDiv(b.cx(), 16) - pcx;
+            int dz = Math.floorDiv(b.cz(), 16) - pcz;
+            if (Math.abs(dx) > half || Math.abs(dz) > half) continue;
+            int px = x0 + (dx + half) * cell;
+            int py = y0 + (dz + half) * cell;
+            ctx.fill(px - 1, py - 1, px + cell + 1, py + cell + 1, 0xFFFFCC33);
+        }
+        int cx = x0 + half * cell;
+        int cy = y0 + half * cell;
+        ctx.fill(cx - 1, cy - 1, cx + cell + 1, cy + cell + 1, 0xFFFFFFFF);
+    }
+
     private static void renderHud(DrawContext ctx, RenderTickCounter tick) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.options.hudHidden) return;
+        if (BaseFinderConfig.mapEnabled) drawMap(ctx, mc);
         BlockPos target = BaseFinderClient.target;
         if (!BaseFinderConfig.espEnabled && target == null) return;
 

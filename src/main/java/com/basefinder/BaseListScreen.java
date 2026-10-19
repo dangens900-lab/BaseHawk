@@ -141,7 +141,8 @@ public class BaseListScreen extends Screen {
         ctx.drawCenteredTextWithShadow(textRenderer,
                 Text.literal("Поріг: " + BaseFinderConfig.minScore + " очок  ·  радіус: "
                         + BaseFinderConfig.linkRadius + " бл.  ·  знайдено: " + view.size()
-                        + "  ·  відхилено: " + BaseScanner.rejectedCount()),
+                        + "  ·  відхилено: " + BaseScanner.rejectedCount()
+                        + (BaseScanner.revealRadius() >= 0 ? "  ·  показ: ~" + BaseScanner.revealRadius() + " бл." : "")),
                 width / 2, 20, 0xFFAAAAAA);
 
         ctx.fill(listLeft, listTop, listRight, listBottom, 0x66000000);
@@ -178,9 +179,10 @@ public class BaseListScreen extends Screen {
             int dist = (int) Math.sqrt(b.distSq(px, py, pz));
             String l1 = "#" + (scroll + i + 1) + "  " + b.cx() + " " + b.cy() + " " + b.cz()
                     + "  (" + dist + " м)  очки " + b.score()
-                    + (b.confirmed() < b.total() ? "  підтв. " + b.confirmed() + "/" + b.total() : "");
+                    + (b.confirmed() < b.total() ? "  підтв. " + b.confirmed() + "/" + b.total() : "")
+                    + (b.ageMinutes() >= 2 ? "  бачено " + b.ageMinutes() + " хв тому" : b.ageMinutes() < 0 ? "  вік невідомий" : "");
             String l2 = textRenderer.trimToWidth(b.summary(), listRight - listLeft - 12 - DEL_W);
-            ctx.drawTextWithShadow(textRenderer, l1, listLeft + 6, y + 3, isTarget ? 0xFF55FFFF : 0xFFFFFFFF);
+            ctx.drawTextWithShadow(textRenderer, textRenderer.trimToWidth(l1, listRight - listLeft - 12 - DEL_W), listLeft + 6, y + 3, isTarget ? 0xFF55FFFF : 0xFFFFFFFF);
             ctx.drawTextWithShadow(textRenderer, l2, listLeft + 6, y + 12, 0xFFAAAAAA);
         }
 

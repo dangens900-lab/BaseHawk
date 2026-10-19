@@ -4,16 +4,28 @@ import java.util.List;
 
 public record Base(int cx, int cy, int cz,
                    int minX, int minY, int minZ, int maxX, int maxY, int maxZ,
-                   int score, int total, int confirmed, int[] counts, List<Entry> entries) {
+                   int score, int total, int confirmed, long lastSeen, int[] counts, List<Entry> entries) {
 
     /**
-     * seen     — у скількох сканах підряд клієнт бачив цей блок у завантаженому чанку;
-     * verified — блок бачили в цій сесії (false = запис лише зі старого файлу збереження).
+     * seen     — у скількох сканах чанка підряд клієнт бачив цей блок;
+     * verified — блок бачили наживо в цій сесії (false = запис лише зі збереження);
+     * seenAt   — мілісекунди (epoch), коли блок востаннє бачили наживо; 0 = невідомо.
      */
-    public record Entry(int x, int y, int z, StorageType type, int seen, boolean verified) {
-        /** Підтверджений = перевірений клієнтом і стабільний кілька сканів підряд. */
+    public record Entry(int x, int y, int z, StorageType type, int seen, boolean verified, long seenAt) {
+        /** Підтверджений = перевірений клієнтом у цій сесії й стабільний кілька сканів підряд. */
         public boolean confirmed() {
             return verified && seen >= BaseFinderConfig.effectiveConfirmScans();
+        }
+
+        /** Скільки хвилин тому блок востаннє бачили наживо; -1 якщо невідомо. */
+        public long ageMinutes() {
+            return seenAt <= 0 ? -1 : Math.max(0, (System.currentTimeMillis() - seenAt) / 60000L);
+        }
+
+        public String status() {
+            if (!verified) return "з пам'яті (в цій сесії не бачено)";
+            if (confirmed()) return "підтверджено";
+            return "ще не стабільний (" + seen + "/" + BaseFinderConfig.effectiveConfirmScans() + ")";
         }
     }
 
@@ -22,6 +34,11 @@ public record Base(int cx, int cy, int cz,
         double dy = cy + 0.5 - py;
         double dz = cz + 0.5 - pz;
         return dx * dx + dy * dy + dz * dz;
+    }
+
+    /** Скільки хвилин тому останній раз бачили будь-який блок бази; -1 якщо невідомо. */
+    public long ageMinutes() {
+        return lastSeen <= 0 ? -1 : Math.max(0, (System.currentTimeMillis() - lastSeen) / 60000L);
     }
 
     public String summary() {

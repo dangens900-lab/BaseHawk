@@ -19,10 +19,16 @@ public final class BaseFinderConfig {
     public static boolean requireConfirmed = true;
     /** Режим "ловити все": скан щотіку, підтвердження з першого разу, без перевірки стану блока. */
     public static boolean catchAll = false;
+    /** Міні-карта прочесаних ділянок на екрані (клавіша K). */
+    public static boolean mapEnabled = false;
     /** Скільки сканів підряд блок має бути на місці, щоб вважатись підтвердженим. */
     public static int confirmScans = 3;
     /** Запам'ятований блок видаляється, лише якщо ти ближче за стільки блоків, а його там нема. */
     public static int removeRadius = 8;
+    /** Видаляти записи, яких не бачили наживо довше за N хвилин (0 = ніколи). Команда /basehawk expire. */
+    public static int expireMinutes = 0;
+    /** Бюджет часу на скан далеких чанків за один скан (мс). */
+    public static int scanBudgetMs = 3;
     /** Мінімальна сума очок кластера, щоб він вважався базою. */
     public static int minScore = 6;
     /** Макс. відстань між контейнерами, щоб вони вважались однією базою (блоків). */
@@ -46,8 +52,10 @@ public final class BaseFinderConfig {
         boolean chatNotify = true;
         boolean requireConfirmed = true;
         boolean catchAll = false;
+        boolean mapEnabled = false;
         int minScore = 6;
         int linkRadius = 24;
+        int expireMinutes = 0;
     }
 
     private static Path file() {
@@ -66,8 +74,10 @@ public final class BaseFinderConfig {
                 chatNotify = d.chatNotify;
                 requireConfirmed = d.requireConfirmed;
                 catchAll = d.catchAll;
+                mapEnabled = d.mapEnabled;
                 minScore = Math.max(1, Math.min(60, d.minScore));
                 linkRadius = Math.max(8, Math.min(64, d.linkRadius));
+                expireMinutes = Math.max(0, d.expireMinutes);
             }
         } catch (Exception ex) {
             BaseFinderClient.LOGGER.warn("BaseHawk: не вдалося завантажити налаштування", ex);
@@ -84,8 +94,10 @@ public final class BaseFinderConfig {
             d.chatNotify = chatNotify;
             d.requireConfirmed = requireConfirmed;
             d.catchAll = catchAll;
+            d.mapEnabled = mapEnabled;
             d.minScore = minScore;
             d.linkRadius = linkRadius;
+            d.expireMinutes = expireMinutes;
             try (Writer w = Files.newBufferedWriter(f)) {
                 GSON.toJson(d, w);
             }
