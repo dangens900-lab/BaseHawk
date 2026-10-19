@@ -22,6 +22,7 @@ public class BaseFinderClient implements ClientModInitializer {
     public static KeyBinding openKey;
     public static KeyBinding espKey;
     public static KeyBinding mapKey;
+    public static KeyBinding holoKey;
 
     @Override
     public void onInitializeClient() {
@@ -34,6 +35,9 @@ public class BaseFinderClient implements ClientModInitializer {
 
         mapKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.basefinder.map", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_K, "category.basefinder"));
+
+        holoKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "key.basefinder.holo", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_U, "category.basefinder"));
 
         ClientTickEvents.END_CLIENT_TICK.register(mc -> {
             BaseScanner.tick(mc);
@@ -48,6 +52,14 @@ public class BaseFinderClient implements ClientModInitializer {
                 BaseFinderConfig.save();
                 if (mc.player != null) {
                     mc.player.sendMessage(Text.literal("BaseHawk карта: " + (BaseFinderConfig.mapEnabled ? "§aON" : "§cOFF")), true);
+                }
+            }
+            while (holoKey.wasPressed()) {
+                BaseFinderConfig.holoMode = (BaseFinderConfig.holoMode + 1) % 3;
+                BaseFinderConfig.save();
+                String[] names = {"§cвимкнена", "§aзавжди", "§eлише з F3"};
+                if (mc.player != null) {
+                    mc.player.sendMessage(Text.literal("BaseHawk голограма: " + names[BaseFinderConfig.holoMode]), true);
                 }
             }
             while (espKey.wasPressed()) {

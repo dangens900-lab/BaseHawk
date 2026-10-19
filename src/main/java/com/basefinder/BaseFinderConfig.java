@@ -21,6 +21,8 @@ public final class BaseFinderConfig {
     public static boolean catchAll = false;
     /** Міні-карта прочесаних ділянок на екрані (клавіша K). */
     public static boolean mapEnabled = false;
+    /** Голограма контейнерів і рамка бази: 0 = вимк, 1 = завжди, 2 = лише поки утримуєш F3. Клавіша U перемикає. */
+    public static int holoMode = 2;
     /** Скільки сканів підряд блок має бути на місці, щоб вважатись підтвердженим. */
     public static int confirmScans = 3;
     /** Запам'ятований блок видаляється, лише якщо ти ближче за стільки блоків, а його там нема. */
@@ -53,6 +55,7 @@ public final class BaseFinderConfig {
         boolean requireConfirmed = true;
         boolean catchAll = false;
         boolean mapEnabled = false;
+        int holoMode = 2;
         int minScore = 6;
         int linkRadius = 24;
         int expireMinutes = 0;
@@ -75,6 +78,7 @@ public final class BaseFinderConfig {
                 requireConfirmed = d.requireConfirmed;
                 catchAll = d.catchAll;
                 mapEnabled = d.mapEnabled;
+                holoMode = Math.max(0, Math.min(2, d.holoMode));
                 minScore = Math.max(1, Math.min(60, d.minScore));
                 linkRadius = Math.max(8, Math.min(64, d.linkRadius));
                 expireMinutes = Math.max(0, d.expireMinutes);
@@ -95,6 +99,7 @@ public final class BaseFinderConfig {
             d.requireConfirmed = requireConfirmed;
             d.catchAll = catchAll;
             d.mapEnabled = mapEnabled;
+            d.holoMode = holoMode;
             d.minScore = minScore;
             d.linkRadius = linkRadius;
             d.expireMinutes = expireMinutes;

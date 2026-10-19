@@ -16,11 +16,13 @@ import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
+import net.minecraft.client.util.InputUtil;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -52,7 +54,8 @@ public final class BaseRenderer {
     private static void renderWorld(WorldRenderContext ctx) {
         BlockPos target = BaseFinderClient.target;
         boolean esp = BaseFinderConfig.espEnabled;
-        if (!esp && target == null) return;
+        boolean holo = holoActive(MinecraftClient.getInstance());
+        if (!esp && target == null && !holo) return;
 
         MatrixStack ms = ctx.matrixStack();
         if (ms == null) return;
@@ -77,6 +80,15 @@ public final class BaseRenderer {
             }
         }
 
+        if (holo) {
+            // голограма: рамка навколо всієї бази, видна крізь стіни
+            for (Base b : BaseScanner.bases()) {
+                float[] c = b.confirmed() > 0 ? color(b.score()) : GRAY;
+                frame(bb, mat, cam, b.minX() - 0.25, b.minY() - 0.25, b.minZ() - 0.25,
+                        b.maxX() + 1.25, b.maxY() + 1.25, b.maxZ() + 1.25, c, 0.85f);
+            }
+        }
+
         if (target != null) {
             float[] c = CYAN;
             box(bb, mat, cam, target.getX() + 0.25, target.getY() - 128, target.getZ() + 0.25,
@@ -98,6 +110,80 @@ public final class BaseRenderer {
 
         if (esp && BaseFinderConfig.labelsEnabled) {
             drawLabels(ctx, ms, cam);
+        }
+        if (holo) {
+            drawHolo(ctx, ms, cam);
+        }
+    }
+
+    /** Голограма активна: завжди (1) або поки утримується F3 (2). */
+    private static boolean holoActive(MinecraftClient mc) {
+        int m = BaseFinderConfig.holoMode;
+        if (m == 1) return true;
+        if (m == 2) return InputUtil.isKeyPressed(mc.getWindow().getHandle(), GLFW.GLFW_KEY_F3);
+        return false;
+    }
+
+    /** Каркас (12 ребер) навколо бази; товщина росте з відстанню, щоб рамку було видно здалеку. */
+    private static void frame(BufferBuilder bb, Matrix4f m, Vec3d cam,
+                              double x1, double y1, double z1, double x2, double y2, double z2,
+                              float[] c, float a) {
+        double dx = (x1 + x2) / 2 - cam.x, dy = (y1 + y2) / 2 - cam.y, dz = (z1 + z2) / 2 - cam.z;
+        double dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        double t = Math.max(0.05, dist * 0.004);
+        double[] xs = {x1, x2};
+        double[] ys = {y1, y2};
+        double[] zs = {z1, z2};
+        for (double yy : ys) {
+            for (double zz : zs) box(bb, m, cam, x1, yy - t, zz - t, x2, yy + t, zz + t, c[0], c[1], c[2], a);
+        }
+        for (double xx : xs) {
+            for (double zz : zs) box(bb, m, cam, xx - t, y1, zz - t, xx + t, y2, zz + t, c[0], c[1], c[2], a);
+        }
+        for (double xx : xs) {
+            for (double yy : ys) box(bb, m, cam, xx - t, yy - t, z1, xx + t, yy + t, z2, c[0], c[1], c[2], a);
+        }
+    }
+
+    private static double dist2(Base.Entry e, Vec3d cam) {
+        double dx = e.x() + 0.5 - cam.x, dy = e.y() + 0.5 - cam.y, dz = e.z() + 0.5 - cam.z;
+        return dx * dx + dy * dy + dz * dz;
+    }
+
+    /** Підписи над кожним контейнером (тип + відстань) для найближчих до 60 у радіусі 48 блоків. */
+    private static void drawHolo(WorldRenderContext ctx, MatrixStack ms, Vec3d cam) {
+        VertexConsumerProvider consumers = ctx.consumers();
+        if (consumers == null) return;
+        TextRenderer tr = MinecraftClient.getInstance().textRenderer;
+
+        List<Base.Entry> near = new ArrayList<>();
+        for (Base b : BaseScanner.bases()) {
+            for (Base.Entry e : b.entries()) {
+                if (dist2(e, cam) <= 48.0 * 48.0) near.add(e);
+            }
+        }
+        near.sort(Comparator.comparingDouble(e -> dist2(e, cam)));
+        int n = Math.min(near.size(), 60);
+
+        for (int i = 0; i < n; i++) {
+            Base.Entry e = near.get(i);
+            double dist = Math.sqrt(dist2(e, cam));
+            String s = e.type().title + " · " + (int) dist + " м" + (e.confirmed() ? "" : " ?");
+            float scale = 0.02f * (float) Math.max(1.0, dist / 10.0);
+
+            ms.push();
+            ms.translate(e.x() + 0.5 - cam.x, e.y() + 1.4 - cam.y, e.z() + 0.5 - cam.z);
+            ms.multiply(ctx.camera().getRotation());
+            ms.scale(-scale, -scale, scale);
+            Matrix4f m = ms.peek().getPositionMatrix();
+            float w = tr.getWidth(s);
+            tr.draw(Text.literal(s), -w / 2f, 0f, e.type().color, false, m, consumers,
+                    TextRenderer.TextLayerType.SEE_THROUGH, 0x66000000, 0xF000F0);
+            ms.pop();
+        }
+
+        if (consumers instanceof VertexConsumerProvider.Immediate imm) {
+            imm.draw();
         }
     }
 

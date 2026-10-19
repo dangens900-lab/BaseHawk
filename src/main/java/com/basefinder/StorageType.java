@@ -9,19 +9,25 @@ import net.minecraft.block.entity.MobSpawnerBlockEntity;
 import net.minecraft.block.entity.ShulkerBoxBlockEntity;
 
 public enum StorageType {
-    CHEST(1, "скринь"),
-    BARREL(1, "бочок"),
-    SHULKER(3, "шалкерів"),
-    HOPPER(1, "воронок"),
-    ENDER_CHEST(1, "ендер-скринь"),
-    SPAWNER(2, "спавнерів");
+    CHEST(1, "скринь", "Скриня", 0xFFFFD27F),
+    BARREL(1, "бочок", "Бочка", 0xFFC98B4B),
+    SHULKER(3, "шалкерів", "Шалкер", 0xFFE070FF),
+    HOPPER(1, "воронок", "Воронка", 0xFFBBBBBB),
+    ENDER_CHEST(1, "ендер-скринь", "Ендер-скриня", 0xFFB07CFF),
+    SPAWNER(2, "спавнерів", "Спавнер", 0xFFFF6A6A);
 
     public final int weight;
     public final String label;
+    /** Назва в однині для голограми. */
+    public final String title;
+    /** Колір підпису (ARGB). */
+    public final int color;
 
-    StorageType(int weight, String label) {
+    StorageType(int weight, String label, String title, int color) {
         this.weight = weight;
         this.label = label;
+        this.title = title;
+        this.color = color;
     }
 
     /** Повертає тип, якщо це "базовий" блок, інакше null. */
