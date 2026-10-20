@@ -25,7 +25,12 @@ public class BaseFinderScanner {
 
         World world = client.world;
         BlockPos playerPos = client.player.getBlockPos();
-        
+
+        // Межі висоти світу. У 1.21.2+ метод getTopY() без аргументів прибрано,
+        // тому верхню межу (не включно) рахуємо як нижня межа + висота.
+        int minY = world.getBottomY();
+        int maxY = minY + world.getHeight();
+
         // Визначаємо чанк, в якому стоїть гравець
         int centerChunkX = playerPos.getX() >> 4;
         int centerChunkZ = playerPos.getZ() >> 4;
@@ -49,7 +54,7 @@ public class BaseFinderScanner {
                 for (int x = 0; x < 16; x++) {
                     for (int z = 0; z < 16; z++) {
                         // Перебираємо висоту у світі (від -64 до 320 у нових версіях)
-                        for (int y = world.getBottomY(); y < world.getTopY(); y++) {
+                        for (int y = minY; y < maxY; y++) {
                             
                             BlockPos worldPos = new BlockPos(
                                 (currentChunkX << 4) + x,
