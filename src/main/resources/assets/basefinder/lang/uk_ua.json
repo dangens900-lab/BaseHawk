@@ -1,5 +1,7 @@
 {
   "key.basefinder.open": "Відкрити список баз",
   "key.basefinder.esp": "Увімкнути/вимкнути ESP баз",
-  "category.basefinder": "BaseHawk"
+  "category.basefinder": "BaseHawk",
+  "key.basefinder.map": "Міні-карта",
+  "key.basefinder.holo": "Режим голограми"
 }

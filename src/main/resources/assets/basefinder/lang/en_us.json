@@ -1,5 +1,7 @@
 {
   "key.basefinder.open": "Open base list",
   "key.basefinder.esp": "Toggle base ESP",
-  "category.basefinder": "BaseHawk"
+  "category.basefinder": "BaseHawk",
+  "key.basefinder.map": "Toggle minimap",
+  "key.basefinder.holo": "Cycle hologram mode"
 }
