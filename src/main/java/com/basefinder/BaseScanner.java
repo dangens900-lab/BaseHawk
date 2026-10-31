@@ -60,6 +60,8 @@ public final class BaseScanner {
     private static final Set<Long> notified = new HashSet<>();
     /** Окремі цінні знахідки (спавнер, дамагер, маяк), про які вже написано в чат. */
     private static final Set<Long> notifiedItems = new HashSet<>();
+    /** Блоки, координати яких уже показано в чаті в цій сесії. */
+    private static final Set<Long> notifiedBlocks = new HashSet<>();
     /** Відхилені як неправдиві позиції, по чанках (прибираються разом із чанком). */
     private static final Map<Long, Set<Long>> rejectedByChunk = new HashMap<>();
     /** Чанки, які вже сканувались у поточному завантаженні (скидається при load/unload чанка). */
@@ -166,6 +168,7 @@ public final class BaseScanner {
         ignored.clear();
         notified.clear();
         notifiedItems.clear();
+        notifiedBlocks.clear();
         rejectedByChunk.clear();
         scannedChunks.clear();
         revealSamples.clear();
@@ -564,6 +567,21 @@ public final class BaseScanner {
                 mc.inGameHud.getChatHud().addMessage(Text.literal(
                         "§e[BaseHawk] §fЗнайдено базу §a" + b.cx() + " " + b.cy() + " " + b.cz()
                                 + " §7(" + b.summary() + ")"));
+            }
+        }
+
+        // Миттєві координати кожного нового підтвердженого блоку. Обмеження за один прохід
+        // захищає чат від спаму, але всі знайдені блоки залишаються у списку/ESP.
+        if (!silent && BaseFinderConfig.chatNotify && mc.inGameHud != null) {
+            int shownBlocks = 0;
+            for (Base.Entry e : all) {
+                if (!e.confirmed() || shownBlocks >= 5) continue;
+                long posKey = BlockPos.asLong(e.x(), e.y(), e.z());
+                if (!notifiedBlocks.add(posKey)) continue;
+                shownBlocks++;
+                mc.inGameHud.getChatHud().addMessage(Text.literal(
+                        "§e[BaseHawk] §fЗнайдено §b" + e.type().title + " §fX:§a" + e.x()
+                                + " §fY:§a" + e.y() + " §fZ:§a" + e.z()));
             }
         }
 

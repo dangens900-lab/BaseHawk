@@ -36,6 +36,15 @@ public final class BaseCommands {
                         sayAll(ctx.getSource(), "статистика:", lines);
                         return 1;
                     }))
+                    .then(ClientCommandManager.literal("anti").executes(ctx -> {
+                        List<String> lines = new java.util.ArrayList<>(BaseScanner.stats());
+                        lines.addAll(Diag.statsLines());
+                        lines.add("важливо: клієнт бачить лише дані, які сервер надіслав йому");
+                        lines.add("якщо сервер замінив скриню каменем до відправлення чанка, клієнт її не виявить");
+                        sayAll(ctx.getSource(), "діагностика Anti-Xray:", lines);
+                        sayAll(ctx.getSource(), "останні події:", Diag.recent(8));
+                        return 1;
+                    }))
                     .then(ClientCommandManager.literal("near").executes(ctx -> {
                         MinecraftClient mc = MinecraftClient.getInstance();
                         if (mc.player == null) return 0;
