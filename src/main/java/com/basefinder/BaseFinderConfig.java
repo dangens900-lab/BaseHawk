@@ -23,6 +23,12 @@ public final class BaseFinderConfig {
     public static boolean mapEnabled = false;
     /** Голограма контейнерів і рамка бази: 0 = вимк, 1 = завжди, 2 = лише поки утримуєш F3. Клавіша U перемикає. */
     public static int holoMode = 2;
+    /** Шукати також печі, роздавачі/дропери, варильні стійки, маяки, столи зачарування, таблички та сутності (рамки, стійки, транспорт зі скринею, нюхачі, групи жителів, скупчення мобів). Команда /basehawk extra. */
+    public static boolean extraTypes = true;
+    /** Категорії додаткових цілей (перемикаються в меню B): блоки, сутності, групи/скупчення. */
+    public static boolean extraBlocks = true;
+    public static boolean extraEntities = true;
+    public static boolean extraGroups = true;
     /** Скільки сканів підряд блок має бути на місці, щоб вважатись підтвердженим. */
     public static int confirmScans = 3;
     /** Запам'ятований блок видаляється, лише якщо ти ближче за стільки блоків, а його там нема. */
@@ -59,6 +65,10 @@ public final class BaseFinderConfig {
         int minScore = 6;
         int linkRadius = 24;
         int expireMinutes = 0;
+        boolean extraTypes = true;
+        boolean extraBlocks = true;
+        boolean extraEntities = true;
+        boolean extraGroups = true;
     }
 
     private static Path file() {
@@ -82,6 +92,10 @@ public final class BaseFinderConfig {
                 minScore = Math.max(1, Math.min(60, d.minScore));
                 linkRadius = Math.max(8, Math.min(64, d.linkRadius));
                 expireMinutes = Math.max(0, d.expireMinutes);
+                extraTypes = d.extraTypes;
+                extraBlocks = d.extraBlocks;
+                extraEntities = d.extraEntities;
+                extraGroups = d.extraGroups;
             }
         } catch (Exception ex) {
             BaseFinderClient.LOGGER.warn("BaseHawk: не вдалося завантажити налаштування", ex);
@@ -103,6 +117,10 @@ public final class BaseFinderConfig {
             d.minScore = minScore;
             d.linkRadius = linkRadius;
             d.expireMinutes = expireMinutes;
+            d.extraTypes = extraTypes;
+            d.extraBlocks = extraBlocks;
+            d.extraEntities = extraEntities;
+            d.extraGroups = extraGroups;
             try (Writer w = Files.newBufferedWriter(f)) {
                 GSON.toJson(d, w);
             }

@@ -2,7 +2,13 @@ package com.basefinder;
 
 import com.google.gson.Gson;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.block.AbstractFurnaceBlock;
 import net.minecraft.block.BarrelBlock;
+import net.minecraft.block.BeaconBlock;
+import net.minecraft.block.BrewingStandBlock;
+import net.minecraft.block.DispenserBlock;
+import net.minecraft.block.AbstractSignBlock;
+import net.minecraft.block.EnchantingTableBlock;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.ChestBlock;
 import net.minecraft.block.EnderChestBlock;
@@ -14,6 +20,11 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.network.ServerInfo;
 import net.minecraft.client.world.ClientWorld;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.mob.AmbientEntity;
+import net.minecraft.entity.mob.MobEntity;
+import net.minecraft.entity.mob.WaterCreatureEntity;
+import net.minecraft.entity.passive.VillagerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
@@ -47,6 +58,8 @@ public final class BaseScanner {
     /** Позиції контейнерів, які користувач видалив зі списку (щоб вони не з'являлись знову). */
     private static final Set<Long> ignored = new HashSet<>();
     private static final Set<Long> notified = new HashSet<>();
+    /** Окремі цінні знахідки (спавнер, дамагер, маяк), про які вже написано в чат. */
+    private static final Set<Long> notifiedItems = new HashSet<>();
     /** Відхилені як неправдиві позиції, по чанках (прибираються разом із чанком). */
     private static final Map<Long, Set<Long>> rejectedByChunk = new HashMap<>();
     /** Чанки, які вже сканувались у поточному завантаженні (скидається при load/unload чанка). */
@@ -60,6 +73,40 @@ public final class BaseScanner {
     private static String currentKey = null;
     private static int tickCounter = 0;
     private static boolean dirty = false;
+
+    /** Сутності-цілі (рамки, стійки, транспорт), зібрані за один прохід по світу, по чанках. */
+    private record EntHit(BlockPos pos, StorageType type) {}
+    private static final Map<Long, List<EntHit>> entByChunk = new HashMap<>();
+
+    /** Скільки жителів в одній клітинці 8x8x8 вважається групою (торгова зала, розводка). */
+    private static final int VILLAGER_GROUP_MIN = 3;
+    /** Скільки мобів одного виду в одній клітинці 8x8x8 вважається фермою мобів. */
+    private static final int MOB_FARM_MIN = 8;
+
+    private record Cell(int x, int y, int z) {}
+
+    private static void addEntHit(BlockPos pos, StorageType t) {
+        entByChunk.computeIfAbsent(ChunkPos.toLong(pos.getX() >> 4, pos.getZ() >> 4), k -> new ArrayList<>())
+                .add(new EntHit(pos, t));
+    }
+
+    /**
+     * Рахує сутності по клітинках 8x8x8; клітинка з кількістю не менше min дає один запис у її центрі.
+     * Позиція прив'язана до сітки, тому не «стрибає» разом із мобами.
+     */
+    private static void addGroups(List<Entity> list, int min, StorageType t) {
+        if (list.size() < min) return;
+        Map<Cell, Integer> cnt = new HashMap<>();
+        for (Entity e : list) {
+            BlockPos b = e.getBlockPos();
+            cnt.merge(new Cell(b.getX() >> 3, b.getY() >> 3, b.getZ() >> 3), 1, Integer::sum);
+        }
+        for (Map.Entry<Cell, Integer> en : cnt.entrySet()) {
+            if (en.getValue() < min) continue;
+            Cell c = en.getKey();
+            addEntHit(new BlockPos(c.x() * 8 + 4, c.y() * 8 + 4, c.z() * 8 + 4), t);
+        }
+    }
 
     // стан поточного скану
     private static double sx, sy, sz, sRemoveR2;
@@ -97,6 +144,7 @@ public final class BaseScanner {
         }
 
         tickCounter++;
+        if (BaseFinderConfig.extraTypes && BaseFinderConfig.extraGroups) HitTracker.tick(world, tickCounter);
         if (tickCounter % BaseFinderConfig.effectiveScanTicks() == 0) {
             long t0 = System.nanoTime();
             scanLoaded(mc, world, player);
@@ -113,9 +161,11 @@ public final class BaseScanner {
     }
 
     private static void resetState() {
+        HitTracker.reset();
         chunks.clear();
         ignored.clear();
         notified.clear();
+        notifiedItems.clear();
         rejectedByChunk.clear();
         scannedChunks.clear();
         revealSamples.clear();
@@ -170,6 +220,28 @@ public final class BaseScanner {
         scanChanged = false;
         int scanned = 0;
 
+        entByChunk.clear();
+        if (BaseFinderConfig.extraTypes) {
+            List<Entity> villagers = new ArrayList<>();
+            Map<net.minecraft.entity.EntityType<?>, List<Entity>> mobs = new HashMap<>();
+            for (Entity e : world.getEntities()) {
+                if (e.isRemoved()) continue;
+                StorageType et = StorageType.ofEntity(e);
+                if (et != null) {
+                    addEntHit(e.getBlockPos(), et);
+                } else if (e instanceof VillagerEntity) {
+                    villagers.add(e);
+                } else if (e instanceof MobEntity && !(e instanceof WaterCreatureEntity) && !(e instanceof AmbientEntity)) {
+                    mobs.computeIfAbsent(e.getType(), k -> new ArrayList<>()).add(e);
+                }
+            }
+            if (BaseFinderConfig.extraGroups) {
+                addGroups(villagers, VILLAGER_GROUP_MIN, StorageType.VILLAGERS);
+                for (List<Entity> l : mobs.values()) addGroups(l, MOB_FARM_MIN, StorageType.MOB_FARM);
+                for (BlockPos c : HitTracker.activeCenters(tickCounter)) addEntHit(c, StorageType.DAMAGER);
+            }
+        }
+
         // 1) ближні чанки — щоразу повністю (саме там сервер показує блоки)
         for (int i = 0; i < nearCount; i++) {
             scanChunk(world, pc.x + order[i][0], pc.z + order[i][1]);
@@ -199,7 +271,8 @@ public final class BaseScanner {
         boolean wasScanned = !scannedChunks.add(key);
 
         List<Base.Entry> old = chunks.get(key);
-        if (ch.getBlockEntities().isEmpty()) {
+        List<EntHit> entHits = entByChunk.get(key);
+        if (ch.getBlockEntities().isEmpty() && entHits == null) {
             rejectedByChunk.remove(key);
             if (old == null) return;
         }
@@ -243,6 +316,29 @@ public final class BaseScanner {
             }
             if (fresh.confirmed()) Diag.event(Diag.Reason.CONFIRMED, pl, t, p.getX(), p.getY(), p.getZ());
             now.put(pl, fresh);
+        }
+        if (entHits != null) {
+            for (EntHit h : entHits) {
+                BlockPos p = h.pos();
+                long pl = p.asLong();
+                if (now.containsKey(pl)) continue;
+                if (ignored.contains(pl)) {
+                    Diag.event(Diag.Reason.IGNORED, pl, h.type(), p.getX(), p.getY(), p.getZ());
+                    continue;
+                }
+                Base.Entry before = prev == null ? null : prev.get(pl);
+                int seen = (before != null && before.type() == h.type()) ? Math.min(before.seen() + 1, 1000) : 1;
+                Base.Entry fresh = new Base.Entry(p.getX(), p.getY(), p.getZ(), h.type(), seen, true, scanNow);
+                if (before == null) {
+                    scanChanged = true;
+                    Diag.event(Diag.Reason.ACCEPTED, pl, h.type(), p.getX(), p.getY(), p.getZ());
+                    if (wasScanned) addRevealSample(p);
+                } else if (before.confirmed() != fresh.confirmed()) {
+                    scanChanged = true;
+                }
+                if (fresh.confirmed()) Diag.event(Diag.Reason.CONFIRMED, pl, h.type(), p.getX(), p.getY(), p.getZ());
+                now.put(pl, fresh);
+            }
         }
         if (rej == null) rejectedByChunk.remove(key);
         else rejectedByChunk.put(key, rej);
@@ -298,6 +394,13 @@ public final class BaseScanner {
             case HOPPER -> state.getBlock() instanceof HopperBlock;
             case ENDER_CHEST -> state.getBlock() instanceof EnderChestBlock;
             case SPAWNER -> state.getBlock() instanceof SpawnerBlock;
+            case FURNACE -> state.getBlock() instanceof AbstractFurnaceBlock;
+            case DISPENSER -> state.getBlock() instanceof DispenserBlock;
+            case BREWING_STAND -> state.getBlock() instanceof BrewingStandBlock;
+            case BEACON -> state.getBlock() instanceof BeaconBlock;
+            case ENCHANTING -> state.getBlock() instanceof EnchantingTableBlock;
+            case SIGN -> state.getBlock() instanceof AbstractSignBlock;
+            case ITEM_FRAME, ARMOR_STAND, CHEST_VEHICLE, SNIFFER, VILLAGERS, MOB_FARM, DAMAGER -> true; // сутності: перевірки стану блока нема
         };
         return ok ? null : Diag.Reason.REJ_TYPE;
     }
@@ -445,6 +548,7 @@ public final class BaseScanner {
         for (List<Base.Entry> l : chunks.values()) {
             for (Base.Entry e : l) {
                 // непідтверджені (з файлу або ще не стабільні) не враховуємо, якщо ввімкнено "лише підтверджені"
+                if (!e.type().enabled()) continue; // вимкнена категорія з меню
                 if (!BaseFinderConfig.requireConfirmed || e.confirmed()) all.add(e);
             }
         }
@@ -460,6 +564,22 @@ public final class BaseScanner {
                 mc.inGameHud.getChatHud().addMessage(Text.literal(
                         "§e[BaseHawk] §fЗнайдено базу §a" + b.cx() + " " + b.cy() + " " + b.cz()
                                 + " §7(" + b.summary() + ")"));
+            }
+        }
+
+        // окремі цінні знахідки: повідомлення в чаті з координатами, навіть якщо бази ще нема
+        if (!silent && BaseFinderConfig.chatNotify && mc.inGameHud != null) {
+            int shownItems = 0;
+            for (Base.Entry e : all) {
+                if (shownItems >= 3) break;
+                if (!e.confirmed()) continue;
+                StorageType t = e.type();
+                if (t != StorageType.SPAWNER && t != StorageType.DAMAGER && t != StorageType.BEACON) continue;
+                if (!notifiedItems.add(BlockPos.asLong(e.x(), e.y(), e.z()))) continue;
+                shownItems++;
+                mc.inGameHud.getChatHud().addMessage(Text.literal(
+                        "§e[BaseHawk] §fЗнайдено: §c" + t.title + " §fна координатах §aX:" + e.x()
+                                + " Y:" + e.y() + " Z:" + e.z()));
             }
         }
     }

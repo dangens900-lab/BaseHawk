@@ -2,6 +2,7 @@ package com.basefinder;
 
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
@@ -27,7 +28,7 @@ public class BaseListScreen extends Screen {
         int panelW = Math.min(width - 20, 460);
         listLeft = (width - panelW) / 2;
         listRight = listLeft + panelW;
-        listTop = 132;
+        listTop = 156;
         listBottom = height - 22;
     }
 
@@ -52,6 +53,29 @@ public class BaseListScreen extends Screen {
 
     private void addBtn(String label, int x, int y, int w, ButtonWidget.PressAction action) {
         addDrawableChild(ButtonWidget.builder(Text.literal(label), action).dimensions(x, y, w, 20).build());
+    }
+
+    private void addBtn(String label, int x, int y, int w, String tip, ButtonWidget.PressAction action) {
+        addDrawableChild(ButtonWidget.builder(Text.literal(label), action)
+                .dimensions(x, y, w, 20).tooltip(Tooltip.of(Text.literal(tip))).build());
+    }
+
+    /** Перемикач категорії додаткових цілей. Якщо вмикаємо — знімаємо й загальне вимкнення. */
+    private void toggleExtra(int which) {
+        switch (which) {
+            case 0 -> BaseFinderConfig.extraBlocks = !BaseFinderConfig.extraBlocks;
+            case 1 -> BaseFinderConfig.extraEntities = !BaseFinderConfig.extraEntities;
+            default -> BaseFinderConfig.extraGroups = !BaseFinderConfig.extraGroups;
+        }
+        if (BaseFinderConfig.extraBlocks || BaseFinderConfig.extraEntities || BaseFinderConfig.extraGroups) {
+            BaseFinderConfig.extraTypes = true;
+        }
+        settingsChanged();
+        rebuild();
+    }
+
+    private static boolean on(boolean flag) {
+        return BaseFinderConfig.extraTypes && flag;
     }
 
     @Override
@@ -120,6 +144,15 @@ public class BaseListScreen extends Screen {
                     BaseScanner.recompute();
                     rebuild();
                 });
+
+        // ряд 5: додаткові цілі
+        int third = (bw * 3 + gap * 2 - gap * 2) / 3;
+        addBtn("Блоки: " + (on(BaseFinderConfig.extraBlocks) ? "ON" : "OFF"), x0, 130, third,
+                "Печі, роздавачі, варильні стійки, маяки, столи зачарування, таблички", b -> toggleExtra(0));
+        addBtn("Сутності: " + (on(BaseFinderConfig.extraEntities) ? "ON" : "OFF"), x0 + third + gap, 130, third,
+                "Рамки, стійки для обладунку, транспорт зі скринею, нюхачі (видно лише поблизу)", b -> toggleExtra(1));
+        addBtn("Групи: " + (on(BaseFinderConfig.extraGroups) ? "ON" : "OFF"), x0 + (third + gap) * 2, 130, third,
+                "Групи жителів (3+), скупчення мобів/ферми (8+) і точки, де моби часто отримують удари без гравця (дамагери)", b -> toggleExtra(2));
     }
 
     @Override

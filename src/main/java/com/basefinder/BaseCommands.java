@@ -54,6 +54,19 @@ public final class BaseCommands {
                         say(ctx.getSource(), "§e[BaseHawk] §fДіагностика в чаті: " + (Diag.verbose ? "§aON" : "§cOFF"));
                         return 1;
                     }))
+                    .then(ClientCommandManager.literal("extra").executes(ctx -> {
+                        boolean on = !BaseFinderConfig.extraTypes;
+                        BaseFinderConfig.extraTypes = on;
+                        BaseFinderConfig.extraBlocks = on;
+                        BaseFinderConfig.extraEntities = on;
+                        BaseFinderConfig.extraGroups = on;
+                        BaseFinderConfig.save();
+                        BaseScanner.recompute();
+                        say(ctx.getSource(), "§e[BaseHawk] §fДодаткові цілі (печі, роздавачі, варильні стійки, маяки, столи зачарування, таблички, рамки, стійки, транспорт зі скринею, нюхачі, групи жителів, скупчення мобів, ударні точки): "
+                                + (BaseFinderConfig.extraTypes ? "§aON" : "§cOFF")
+                                + "§f. Зміна діє на нові скани.");
+                        return 1;
+                    }))
                     .then(ClientCommandManager.literal("expire")
                             .then(ClientCommandManager.argument("minutes", IntegerArgumentType.integer(0, 100000))
                                     .executes(ctx -> {
