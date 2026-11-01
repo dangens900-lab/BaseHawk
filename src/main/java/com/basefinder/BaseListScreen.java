@@ -28,7 +28,7 @@ public class BaseListScreen extends Screen {
         int panelW = Math.min(width - 20, 460);
         listLeft = (width - panelW) / 2;
         listRight = listLeft + panelW;
-        listTop = 192;
+        listTop = 204;
         listBottom = height - 22;
     }
 
@@ -161,6 +161,22 @@ public class BaseListScreen extends Screen {
             settingsChanged(); rebuild();
         });
 
+        addBtn("Затримка −", x0, 178, bw, b -> {
+            BaseFinderConfig.eventProcessingDelayMs = Math.max(0, BaseFinderConfig.eventProcessingDelayMs - 250);
+            settingsChanged(); rebuild();
+        });
+        addBtn("Затримка: " + BaseFinderConfig.eventProcessingDelayMs + " мс", x1, 178, bw,
+                "Затримує лише локальну обробку метаданих подій чанків.", b -> {
+                    BaseFinderConfig.eventProcessingDelayMs =
+                            BaseFinderConfig.eventProcessingDelayMs >= 3000 ? 0
+                                    : Math.min(10000, BaseFinderConfig.eventProcessingDelayMs + 250);
+                    settingsChanged(); rebuild();
+                });
+        addBtn("Затримка +", x2, 178, bw, b -> {
+            BaseFinderConfig.eventProcessingDelayMs = Math.min(10000, BaseFinderConfig.eventProcessingDelayMs + 250);
+            settingsChanged(); rebuild();
+        });
+
         // ряд 6: додаткові цілі
         int third = (bw * 3 + gap * 2 - gap * 2) / 3;
         addBtn("Блоки: " + (on(BaseFinderConfig.extraBlocks) ? "ON" : "OFF"), x0, 130, third,
@@ -196,8 +212,14 @@ public class BaseListScreen extends Screen {
         ctx.drawCenteredTextWithShadow(textRenderer, Text.literal(NetworkStats.summary()), width / 2, 32, 0xFF88CCFF);
         ctx.drawCenteredTextWithShadow(textRenderer,
                 Text.literal("Доступно чанків у зоні: " + BaseScanner.loadedChunksInZone()
-                        + "  ·  прохід області: " + BaseScanner.scanProgressPercent() + "%"),
+                        + "  ·  унікально за сесію: " + BaseScanner.uniqueLoadedChunkCount()
+                        + "  ·  прохід: " + BaseScanner.scanProgressPercent() + "%"),
                 width / 2, 44, 0xFF88FFAA);
+        ctx.drawCenteredTextWithShadow(textRenderer,
+                Text.literal("Черга подій: " + NetworkStats.pendingSize()
+                        + " / 4096  ·  історія: " + NetworkStats.historySize()
+                        + " / 256  ·  затримка обробки: " + BaseFinderConfig.eventProcessingDelayMs + " мс"),
+                width / 2, 56, 0xFFFFCC88);
 
         ctx.fill(listLeft, listTop, listRight, listBottom, 0x66000000);
 

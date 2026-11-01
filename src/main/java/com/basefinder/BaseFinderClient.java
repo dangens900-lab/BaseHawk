@@ -40,6 +40,7 @@ public class BaseFinderClient implements ClientModInitializer {
                 "key.basefinder.holo", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_U, "category.basefinder"));
 
         ClientTickEvents.END_CLIENT_TICK.register(mc -> {
+            NetworkStats.processDelayed(System.currentTimeMillis(), BaseFinderConfig.eventProcessingDelayMs);
             BaseScanner.tick(mc);
 
             while (openKey.wasPressed()) {

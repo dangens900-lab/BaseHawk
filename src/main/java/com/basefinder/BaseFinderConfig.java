@@ -45,6 +45,8 @@ public final class BaseFinderConfig {
     public static int scanIntervalTicks = 4;
     /** Межа аналізу вже завантажених клієнтом чанків; не запитує чанки у сервера. */
     public static int scanRadiusBlocks = 160;
+    /** Затримка локальної обробки метаданих подій чанків (мс), не затримка мережі. */
+    public static int eventProcessingDelayMs = 1000;
 
     public static int effectiveScanTicks() {
         return catchAll ? 1 : Math.max(1, scanIntervalTicks);
@@ -68,6 +70,7 @@ public final class BaseFinderConfig {
         int linkRadius = 24;
         int expireMinutes = 0;
         int scanRadiusBlocks = 160;
+        int eventProcessingDelayMs = 1000;
         boolean extraTypes = true;
         boolean extraBlocks = true;
         boolean extraEntities = true;
@@ -96,6 +99,7 @@ public final class BaseFinderConfig {
                 linkRadius = Math.max(8, Math.min(64, d.linkRadius));
                 expireMinutes = Math.max(0, d.expireMinutes);
                 scanRadiusBlocks = Math.max(16, Math.min(1000, d.scanRadiusBlocks));
+                eventProcessingDelayMs = Math.max(0, Math.min(10000, d.eventProcessingDelayMs));
                 extraTypes = d.extraTypes;
                 extraBlocks = d.extraBlocks;
                 extraEntities = d.extraEntities;
@@ -122,6 +126,7 @@ public final class BaseFinderConfig {
             d.linkRadius = linkRadius;
             d.expireMinutes = expireMinutes;
             d.scanRadiusBlocks = scanRadiusBlocks;
+            d.eventProcessingDelayMs = eventProcessingDelayMs;
             d.extraTypes = extraTypes;
             d.extraBlocks = extraBlocks;
             d.extraEntities = extraEntities;

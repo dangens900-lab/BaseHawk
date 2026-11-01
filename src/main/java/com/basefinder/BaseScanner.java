@@ -121,6 +121,8 @@ public final class BaseScanner {
     private static int cursor = 0;
     private static volatile int loadedChunksInZone = 0;
     private static volatile int scanProgressPercent = 0;
+    private static final Set<Long> uniqueLoadedChunkKeys = new HashSet<>();
+    private static final int MAX_UNIQUE_CHUNK_KEYS = 100_000;
     /** Чанки в межах цього радіуса (у чанках², тобто 3 чанки) скануються щоразу повністю. */
     private static final int NEAR_R2 = 9;
 
@@ -142,6 +144,10 @@ public final class BaseScanner {
     /** Приблизний індикатор проходу по області; 100% означає завершення одного циклу обходу. */
     public static int scanProgressPercent() {
         return scanProgressPercent;
+    }
+
+    public static int uniqueLoadedChunkCount() {
+        return uniqueLoadedChunkKeys.size();
     }
 
     public static void tick(MinecraftClient mc) {
@@ -192,6 +198,7 @@ public final class BaseScanner {
         dirty = false;
         loadedChunksInZone = 0;
         scanProgressPercent = 0;
+        uniqueLoadedChunkKeys.clear();
         Diag.reset();
     }
 
@@ -199,7 +206,11 @@ public final class BaseScanner {
 
     /** Чанк щойно завантажився: перший скан не вважаємо "появою поблизу" (не псуємо вимір радіуса показу). */
     public static void onChunkLoad(int x, int z) {
-        scannedChunks.remove(ChunkPos.toLong(x, z));
+        long key = ChunkPos.toLong(x, z);
+        scannedChunks.remove(key);
+        if (uniqueLoadedChunkKeys.size() < MAX_UNIQUE_CHUNK_KEYS && uniqueLoadedChunkKeys.add(key)) {
+            NetworkStats.recordUniqueChunkLoad();
+        }
     }
 
     /** Чанк вивантажено: забуваємо його тимчасові дані; знайдені блоки лишаються в пам'яті. */
