@@ -119,6 +119,8 @@ public final class BaseScanner {
     private static int orderRadius = -1;
     private static int nearCount = 0;
     private static int cursor = 0;
+    private static volatile int loadedChunksInZone = 0;
+    private static volatile int scanProgressPercent = 0;
     /** Чанки в межах цього радіуса (у чанках², тобто 3 чанки) скануються щоразу повністю. */
     private static final int NEAR_R2 = 9;
 
@@ -130,6 +132,16 @@ public final class BaseScanner {
 
     public static List<Base> bases() {
         return bases;
+    }
+
+    /** Кількість чанків у зоні, які зараз уже завантажені клієнтом. */
+    public static int loadedChunksInZone() {
+        return loadedChunksInZone;
+    }
+
+    /** Приблизний індикатор проходу по області; 100% означає завершення одного циклу обходу. */
+    public static int scanProgressPercent() {
+        return scanProgressPercent;
     }
 
     public static void tick(MinecraftClient mc) {
@@ -178,6 +190,8 @@ public final class BaseScanner {
         bases = List.of();
         cursor = nearCount;
         dirty = false;
+        loadedChunksInZone = 0;
+        scanProgressPercent = 0;
         Diag.reset();
     }
 
@@ -226,6 +240,11 @@ public final class BaseScanner {
         scanNow = System.currentTimeMillis();
         scanChanged = false;
         int scanned = 0;
+        int loadedNow = 0;
+        for (int[] offset : order) {
+            if (world.getChunkManager().isChunkLoaded(pc.x + offset[0], pc.z + offset[1])) loadedNow++;
+        }
+        loadedChunksInZone = loadedNow;
 
         entByChunk.clear();
         if (BaseFinderConfig.extraTypes) {
@@ -269,6 +288,9 @@ public final class BaseScanner {
             }
         }
         Diag.lastScanChunks = scanned;
+        int farCount = Math.max(1, order.length - nearCount);
+        scanProgressPercent = nearCount >= order.length ? 100
+                : Math.min(100, Math.max(0, (cursor - nearCount) * 100 / farCount));
         NetworkStats.recordScannedChunks(scanned);
     }
 

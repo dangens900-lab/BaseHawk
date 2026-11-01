@@ -28,7 +28,7 @@ public class BaseListScreen extends Screen {
         int panelW = Math.min(width - 20, 460);
         listLeft = (width - panelW) / 2;
         listRight = listLeft + panelW;
-        listTop = 180;
+        listTop = 192;
         listBottom = height - 22;
     }
 
@@ -194,6 +194,10 @@ public class BaseListScreen extends Screen {
                         + (BaseScanner.revealRadius() >= 0 ? "  ·  показ: ~" + BaseScanner.revealRadius() + " бл." : "")),
                 width / 2, 20, 0xFFAAAAAA);
         ctx.drawCenteredTextWithShadow(textRenderer, Text.literal(NetworkStats.summary()), width / 2, 32, 0xFF88CCFF);
+        ctx.drawCenteredTextWithShadow(textRenderer,
+                Text.literal("Доступно чанків у зоні: " + BaseScanner.loadedChunksInZone()
+                        + "  ·  прохід області: " + BaseScanner.scanProgressPercent() + "%"),
+                width / 2, 44, 0xFF88FFAA);
 
         ctx.fill(listLeft, listTop, listRight, listBottom, 0x66000000);
 
