@@ -28,7 +28,7 @@ public class BaseListScreen extends Screen {
         int panelW = Math.min(width - 20, 460);
         listLeft = (width - panelW) / 2;
         listRight = listLeft + panelW;
-        listTop = 156;
+        listTop = 180;
         listBottom = height - 22;
     }
 
@@ -145,7 +145,23 @@ public class BaseListScreen extends Screen {
                     rebuild();
                 });
 
-        // ряд 5: додаткові цілі
+        // Радіус аналізу вже завантажених клієнтом чанків
+        addBtn("Зона −", x0, 154, bw, b -> {
+            BaseFinderConfig.scanRadiusBlocks = Math.max(16, BaseFinderConfig.scanRadiusBlocks - 64);
+            settingsChanged(); rebuild();
+        });
+        addBtn("Зона: " + BaseFinderConfig.scanRadiusBlocks + " бл.", x1, 154, bw,
+                "Аналізує тільки чанки, які вже завантажені клієнтом.", b -> {
+                    BaseFinderConfig.scanRadiusBlocks = BaseFinderConfig.scanRadiusBlocks >= 1000
+                            ? 16 : Math.min(1000, BaseFinderConfig.scanRadiusBlocks + 64);
+                    settingsChanged(); rebuild();
+                });
+        addBtn("Зона +", x2, 154, bw, b -> {
+            BaseFinderConfig.scanRadiusBlocks = Math.min(1000, BaseFinderConfig.scanRadiusBlocks + 64);
+            settingsChanged(); rebuild();
+        });
+
+        // ряд 6: додаткові цілі
         int third = (bw * 3 + gap * 2 - gap * 2) / 3;
         addBtn("Блоки: " + (on(BaseFinderConfig.extraBlocks) ? "ON" : "OFF"), x0, 130, third,
                 "Печі, роздавачі, варильні стійки, маяки, столи зачарування, таблички", b -> toggleExtra(0));
@@ -174,9 +190,10 @@ public class BaseListScreen extends Screen {
         ctx.drawCenteredTextWithShadow(textRenderer,
                 Text.literal("Поріг: " + BaseFinderConfig.minScore + " очок  ·  радіус: "
                         + BaseFinderConfig.linkRadius + " бл.  ·  знайдено: " + view.size()
-                        + "  ·  відхилено: " + BaseScanner.rejectedCount()
+                        + "  ·  зона: " + BaseFinderConfig.scanRadiusBlocks + " бл.  ·  відхилено: " + BaseScanner.rejectedCount()
                         + (BaseScanner.revealRadius() >= 0 ? "  ·  показ: ~" + BaseScanner.revealRadius() + " бл." : "")),
                 width / 2, 20, 0xFFAAAAAA);
+        ctx.drawCenteredTextWithShadow(textRenderer, Text.literal(NetworkStats.summary()), width / 2, 32, 0xFF88CCFF);
 
         ctx.fill(listLeft, listTop, listRight, listBottom, 0x66000000);
 

@@ -116,6 +116,7 @@ public final class BaseScanner {
     private static long scanNow;
     private static int[][] order = null;
     private static int orderVd = -1;
+    private static int orderRadius = -1;
     private static int nearCount = 0;
     private static int cursor = 0;
     /** Чанки в межах цього радіуса (у чанках², тобто 3 чанки) скануються щоразу повністю. */
@@ -204,6 +205,7 @@ public final class BaseScanner {
         list.sort(Comparator.comparingInt(a -> a[0] * a[0] + a[1] * a[1]));
         order = list.toArray(new int[0][]);
         orderVd = vd;
+        orderRadius = BaseFinderConfig.scanRadiusBlocks;
         int n = 0;
         while (n < order.length && order[n][0] * order[n][0] + order[n][1] * order[n][1] <= NEAR_R2) n++;
         nearCount = n;
@@ -212,7 +214,9 @@ public final class BaseScanner {
 
     private static void scanLoaded(MinecraftClient mc, ClientWorld world, ClientPlayerEntity player) {
         int vd = mc.options.getClampedViewDistance();
-        if (order == null || orderVd != vd) buildOrder(vd);
+        int radiusChunks = Math.max(1, (BaseFinderConfig.scanRadiusBlocks + 15) / 16);
+        int effectiveChunks = Math.min(vd, radiusChunks);
+        if (order == null || orderVd != effectiveChunks || orderRadius != BaseFinderConfig.scanRadiusBlocks) buildOrder(effectiveChunks);
 
         ChunkPos pc = player.getChunkPos();
         sx = player.getX();
@@ -265,6 +269,7 @@ public final class BaseScanner {
             }
         }
         Diag.lastScanChunks = scanned;
+        NetworkStats.recordScannedChunks(scanned);
     }
 
     private static void scanChunk(ClientWorld world, int x, int z) {

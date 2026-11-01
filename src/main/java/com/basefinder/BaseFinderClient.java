@@ -71,13 +71,20 @@ public class BaseFinderClient implements ClientModInitializer {
             }
         });
 
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> BaseScanner.onDisconnect());
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+            BaseScanner.onDisconnect();
+            NetworkStats.resetSession();
+        });
 
         // життєвий цикл чанків: скидаємо тимчасові дані, знайдені блоки лишаються в пам'яті
-        ClientChunkEvents.CHUNK_LOAD.register((world, chunk) ->
-                BaseScanner.onChunkLoad(chunk.getPos().x, chunk.getPos().z));
-        ClientChunkEvents.CHUNK_UNLOAD.register((world, chunk) ->
-                BaseScanner.onChunkUnload(chunk.getPos().x, chunk.getPos().z));
+        ClientChunkEvents.CHUNK_LOAD.register((world, chunk) -> {
+            NetworkStats.onChunkLoad(chunk.getPos().x, chunk.getPos().z);
+            BaseScanner.onChunkLoad(chunk.getPos().x, chunk.getPos().z);
+        });
+        ClientChunkEvents.CHUNK_UNLOAD.register((world, chunk) -> {
+            NetworkStats.onChunkUnload(chunk.getPos().x, chunk.getPos().z);
+            BaseScanner.onChunkUnload(chunk.getPos().x, chunk.getPos().z);
+        });
 
         BaseCommands.register();
 

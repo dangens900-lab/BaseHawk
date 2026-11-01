@@ -43,6 +43,8 @@ public final class BaseFinderConfig {
     public static int linkRadius = 24;
     /** Як часто сканувати завантажені чанки (тіки). */
     public static int scanIntervalTicks = 4;
+    /** Межа аналізу вже завантажених клієнтом чанків; не запитує чанки у сервера. */
+    public static int scanRadiusBlocks = 160;
 
     public static int effectiveScanTicks() {
         return catchAll ? 1 : Math.max(1, scanIntervalTicks);
@@ -65,6 +67,7 @@ public final class BaseFinderConfig {
         int minScore = 6;
         int linkRadius = 24;
         int expireMinutes = 0;
+        int scanRadiusBlocks = 160;
         boolean extraTypes = true;
         boolean extraBlocks = true;
         boolean extraEntities = true;
@@ -92,6 +95,7 @@ public final class BaseFinderConfig {
                 minScore = Math.max(1, Math.min(60, d.minScore));
                 linkRadius = Math.max(8, Math.min(64, d.linkRadius));
                 expireMinutes = Math.max(0, d.expireMinutes);
+                scanRadiusBlocks = Math.max(16, Math.min(1000, d.scanRadiusBlocks));
                 extraTypes = d.extraTypes;
                 extraBlocks = d.extraBlocks;
                 extraEntities = d.extraEntities;
@@ -117,6 +121,7 @@ public final class BaseFinderConfig {
             d.minScore = minScore;
             d.linkRadius = linkRadius;
             d.expireMinutes = expireMinutes;
+            d.scanRadiusBlocks = scanRadiusBlocks;
             d.extraTypes = extraTypes;
             d.extraBlocks = extraBlocks;
             d.extraEntities = extraEntities;
